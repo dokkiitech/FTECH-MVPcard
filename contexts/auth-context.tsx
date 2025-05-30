@@ -37,12 +37,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, userData: UserData) => {
     try {
+      console.log("Starting Firebase user creation...")
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      console.log("Firebase user created successfully:", userCredential.user.uid)
 
       // データベースにユーザー情報を保存
       const endpoint = userData.role === "student" ? "/api/auth/register/student" : "/api/auth/register/teacher"
+      console.log("Calling endpoint:", endpoint)
 
       const token = await userCredential.user.getIdToken()
+      console.log("Got ID token")
+
+      const requestBody = {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        ...userData,
+      }
+      console.log("Request body:", requestBody)
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -50,20 +61,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          uid: userCredential.user.uid,
-          email: userCredential.user.email,
-          ...userData,
-        }),
+        body: JSON.stringify(requestBody),
       })
+
+      console.log("API response status:", response.status)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        console.error("API error response:", errorData)
+
         // Firebase Authからユーザーを削除（ロールバック）
-        await userCredential.user.delete()
-        throw new Error(errorData.error || "Failed to save user data")
+        try {
+          await userCredential.user.delete()
+          console.log("Firebase user deleted due to API error")
+        } catch (deleteError) {
+          console.error("Failed to delete Firebase user:", deleteError)
+        }
+
+        throw new Error(errorData.error || `API error: ${response.status}`)
       }
+
+      const responseData = await response.json()
+      console.log("API success response:", responseData)
     } catch (error: any) {
+      console.error("SignUp error details:", error)
+
       // Firebaseエラーを日本語メッセージに変換
       if (error.code === "auth/email-already-in-use") {
         throw new Error("このメールアドレスは既に使用されています")
@@ -71,6 +93,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("パスワードが弱すぎます。6文字以上で設定してください")
       } else if (error.code === "auth/invalid-email") {
         throw new Error("無効なメールアドレスです")
+      } else if (error.message.includes("API error")) {
+        throw new Error(`データベース保存エラー: ${error.message}`)
       } else {
         throw new Error(error.message || "登録に失敗しました")
       }
