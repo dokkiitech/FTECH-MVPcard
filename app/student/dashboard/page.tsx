@@ -9,10 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchWithAuth } from "@/lib/api-client"
-import { Star, Trophy, Plus, Loader2, CheckCircle, Gift } from "lucide-react"
+import { Star, Trophy, Plus, Loader2, CheckCircle, Gift, AlertCircle } from "lucide-react"
 
 interface Stamp {
   position: number
@@ -37,6 +38,9 @@ export default function StudentDashboard() {
   const [cards, setCards] = useState<StampCard[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [dataError, setDataError] = useState<string | null>(null)
+  const [stampError, setStampError] = useState<string | null>(null)
+  const [giftError, setGiftError] = useState<string | null>(null)
   const { user, userRole, logout, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -66,6 +70,7 @@ export default function StudentDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true)
+      setDataError(null)
       console.log("Fetching student data...")
 
       // スタンプカードを取得
@@ -75,9 +80,11 @@ export default function StudentDashboard() {
       console.log("Data fetched successfully")
     } catch (error: any) {
       console.error("Error fetching data:", error)
+      const errorMessage = error.message || "データの取得に失敗しました"
+      setDataError(errorMessage)
       toast({
-        title: "エラー",
-        description: error.message || "データの取得に失敗しました",
+        title: "データ取得エラー",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -87,10 +94,20 @@ export default function StudentDashboard() {
 
   const handleStampSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!stampCode.trim()) return
+    if (!stampCode.trim()) {
+      setStampError("スタンプコードを入力してください")
+      return
+    }
+
+    // 5桁の数字チェック
+    if (!/^\d{5}$/.test(stampCode)) {
+      setStampError("スタンプコードは5桁の数字で入力してください")
+      return
+    }
 
     try {
       setSubmitting(true)
+      setStampError(null)
       console.log("Submitting stamp code:", stampCode)
 
       const response = await fetchWithAuth("/api/student/use-stamp-code", {
@@ -108,9 +125,25 @@ export default function StudentDashboard() {
       fetchData() // データを再取得
     } catch (error: any) {
       console.error("Error using stamp code:", error)
+      let errorMessage = "スタンプコードの使用に失敗しました"
+
+      // APIからのエラーメッセージを日本語に変換
+      if (error.message.includes("Invalid code")) {
+        errorMessage = "無効なスタンプコードです"
+      } else if (error.message.includes("Code already used")) {
+        errorMessage = "このコードは既に使用済みです"
+      } else if (error.message.includes("Code expired")) {
+        errorMessage = "このコードは期限切れです"
+      } else if (error.message.includes("No available card slots")) {
+        errorMessage = "利用可能なカードスロットがありません"
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
+      setStampError(errorMessage)
       toast({
-        title: "エラー",
-        description: error.message || "スタンプコードの使用に失敗しました",
+        title: "スタンプ取得エラー",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -120,10 +153,20 @@ export default function StudentDashboard() {
 
   const handleGiftSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!giftCode.trim()) return
+    if (!giftCode.trim()) {
+      setGiftError("ギフトコードを入力してください")
+      return
+    }
+
+    // 5桁の数字チェック
+    if (!/^\d{5}$/.test(giftCode)) {
+      setGiftError("ギフトコードは5桁の数字で入力してください")
+      return
+    }
 
     try {
       setSubmitting(true)
+      setGiftError(null)
       console.log("Submitting gift code:", giftCode)
 
       const response = await fetchWithAuth("/api/student/exchange-gift", {
@@ -141,9 +184,25 @@ export default function StudentDashboard() {
       fetchData() // データを再取得
     } catch (error: any) {
       console.error("Error exchanging gift:", error)
+      let errorMessage = "ギフト交換に失敗しました"
+
+      // APIからのエラーメッセージを日本語に変換
+      if (error.message.includes("Invalid gift code")) {
+        errorMessage = "無効なギフトコードです"
+      } else if (error.message.includes("Gift code already used")) {
+        errorMessage = "このギフトコードは既に使用済みです"
+      } else if (error.message.includes("Gift code expired")) {
+        errorMessage = "このギフトコードは期限切れです"
+      } else if (error.message.includes("No completed cards available")) {
+        errorMessage = "交換可能な完成カードがありません"
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
+      setGiftError(errorMessage)
       toast({
-        title: "エラー",
-        description: error.message || "ギフト交換に失敗しました",
+        title: "ギフト交換エラー",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -159,7 +218,7 @@ export default function StudentDashboard() {
     } catch (error: any) {
       console.error("Logout error:", error)
       toast({
-        title: "エラー",
+        title: "ログアウトエラー",
         description: "ログアウトに失敗しました",
         variant: "destructive",
       })
@@ -220,6 +279,19 @@ export default function StudentDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* データ取得エラー表示 */}
+        {dataError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {dataError}
+              <Button variant="outline" size="sm" className="ml-4" onClick={fetchData}>
+                再試行
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* スタンプカード */}
           <div className="lg:col-span-2 space-y-6">
@@ -379,12 +451,22 @@ export default function StudentDashboard() {
                     <Input
                       id="stampCode"
                       value={stampCode}
-                      onChange={(e) => setStampCode(e.target.value)}
+                      onChange={(e) => {
+                        setStampCode(e.target.value)
+                        setStampError(null) // 入力時にエラーをクリア
+                      }}
                       placeholder="12345"
                       maxLength={5}
                       pattern="[0-9]{5}"
                       disabled={submitting}
+                      className={stampError ? "border-red-500" : ""}
                     />
+                    {stampError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{stampError}</AlertDescription>
+                      </Alert>
+                    )}
                   </div>
                   <Button type="submit" className="w-full" disabled={submitting}>
                     {submitting ? (
@@ -415,12 +497,22 @@ export default function StudentDashboard() {
                     <Input
                       id="giftCode"
                       value={giftCode}
-                      onChange={(e) => setGiftCode(e.target.value)}
+                      onChange={(e) => {
+                        setGiftCode(e.target.value)
+                        setGiftError(null) // 入力時にエラーをクリア
+                      }}
                       placeholder="54321"
                       maxLength={5}
                       pattern="[0-9]{5}"
                       disabled={submitting}
+                      className={giftError ? "border-red-500" : ""}
                     />
+                    {giftError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{giftError}</AlertDescription>
+                      </Alert>
+                    )}
                   </div>
                   <Button type="submit" className="w-full" disabled={submitting || completedCards.length === 0}>
                     {submitting ? (

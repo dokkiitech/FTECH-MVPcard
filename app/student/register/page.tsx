@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/contexts/auth-context"
-import { GraduationCap } from "lucide-react"
+import { GraduationCap, Loader2, AlertCircle } from "lucide-react"
 
 export default function StudentRegister() {
   const [formData, setFormData] = useState({
@@ -21,11 +22,44 @@ export default function StudentRegister() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
   const { signUp } = useAuth()
   const router = useRouter()
 
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {}
+
+    if (!formData.name.trim()) {
+      errors.name = "名前を入力してください"
+    }
+
+    if (!formData.major.trim()) {
+      errors.major = "専攻を入力してください"
+    }
+
+    if (!formData.email.trim()) {
+      errors.email = "メールアドレスを入力してください"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = "有効なメールアドレスを入力してください"
+    }
+
+    if (!formData.password.trim()) {
+      errors.password = "パスワードを入力してください"
+    } else if (formData.password.length < 6) {
+      errors.password = "パスワードは6文字以上で入力してください"
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!validateForm()) {
+      return
+    }
+
     setLoading(true)
     setError("")
 
@@ -38,17 +72,48 @@ export default function StudentRegister() {
       router.push("/student/dashboard")
     } catch (error: any) {
       console.error("Registration error:", error)
-      setError(error.message || "登録に失敗しました")
+
+      let errorMessage = "登録に失敗しました"
+
+      // エラーメッセージを日本語に変換
+      if (error.message.includes("このメールアドレスは既に使用されています")) {
+        errorMessage = "このメールアドレスは既に使用されています"
+      } else if (error.message.includes("パスワードが弱すぎます")) {
+        errorMessage = "パスワードが弱すぎます。6文字以上で設定してください"
+      } else if (error.message.includes("無効なメールアドレスです")) {
+        errorMessage = "無効なメールアドレスです"
+      } else if (error.message.includes("このユーザーまたはメールアドレスは既に登録されています")) {
+        errorMessage = "このメールアドレスは既に登録されています"
+      } else if (error.message.includes("ネットワーク")) {
+        errorMessage = "ネットワークエラーが発生しました。インターネット接続を確認してください"
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }))
+
+    // フィールドエラーをクリア
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+
+    // 全体エラーもクリア
+    setError("")
   }
 
   return (
@@ -62,18 +127,53 @@ export default function StudentRegister() {
           <CardDescription>新しいアカウントを作成してスタンプカードを始めよう！</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">名前</Label>
-              <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className={fieldErrors.name ? "border-red-500" : ""}
+                disabled={loading}
+                required
+              />
+              {fieldErrors.name && <p className="text-sm text-red-500">{fieldErrors.name}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="major">専攻</Label>
-              <Input id="major" name="major" value={formData.major} onChange={handleChange} required />
+              <Input
+                id="major"
+                name="major"
+                value={formData.major}
+                onChange={handleChange}
+                className={fieldErrors.major ? "border-red-500" : ""}
+                disabled={loading}
+                required
+              />
+              {fieldErrors.major && <p className="text-sm text-red-500">{fieldErrors.major}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">メールアドレス</Label>
-              <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                className={fieldErrors.email ? "border-red-500" : ""}
+                disabled={loading}
+                required
+              />
+              {fieldErrors.email && <p className="text-sm text-red-500">{fieldErrors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">パスワード</Label>
@@ -83,14 +183,24 @@ export default function StudentRegister() {
                 type="password"
                 value={formData.password}
                 onChange={handleChange}
+                className={fieldErrors.password ? "border-red-500" : ""}
+                disabled={loading}
                 required
               />
+              {fieldErrors.password && <p className="text-sm text-red-500">{fieldErrors.password}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "登録中..." : "アカウント作成"}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  登録中...
+                </>
+              ) : (
+                "アカウント作成"
+              )}
             </Button>
           </form>
-          {error && <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+
           <div className="mt-4 text-center">
             <Link href="/student/login" className="text-sm text-blue-600 hover:underline">
               既にアカウントをお持ちの方はこちら

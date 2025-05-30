@@ -9,14 +9,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/contexts/auth-context"
-import { GraduationCap, Loader2 } from "lucide-react"
+import { GraduationCap, Loader2, AlertCircle } from "lucide-react"
 
 export default function StudentLogin() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   const { signIn, user, userRole, loading: authLoading } = useAuth()
   const router = useRouter()
 
@@ -54,8 +56,32 @@ export default function StudentLogin() {
     )
   }
 
+  const validateForm = () => {
+    const errors: { email?: string; password?: string } = {}
+
+    if (!email.trim()) {
+      errors.email = "メールアドレスを入力してください"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "有効なメールアドレスを入力してください"
+    }
+
+    if (!password.trim()) {
+      errors.password = "パスワードを入力してください"
+    } else if (password.length < 6) {
+      errors.password = "パスワードは6文字以上で入力してください"
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!validateForm()) {
+      return
+    }
+
     setLoading(true)
     setError("")
 
@@ -64,10 +90,36 @@ export default function StudentLogin() {
       // リダイレクトはuseEffectで処理される
     } catch (error: any) {
       console.error("Login error:", error)
-      setError(error.message || "ログインに失敗しました")
+
+      let errorMessage = "ログインに失敗しました"
+
+      // エラーメッセージを日本語に変換
+      if (error.message.includes("このメールアドレスは登録されていません")) {
+        errorMessage = "このメールアドレスは登録されていません"
+      } else if (error.message.includes("パスワードが間違っています")) {
+        errorMessage = "パスワードが間違っています"
+      } else if (error.message.includes("無効なメールアドレスです")) {
+        errorMessage = "無効なメールアドレスです"
+      } else if (error.message.includes("ログイン試行回数が多すぎます")) {
+        errorMessage = "ログイン試行回数が多すぎます。しばらく待ってから再試行してください"
+      } else if (error.message.includes("ネットワーク")) {
+        errorMessage = "ネットワークエラーが発生しました。インターネット接続を確認してください"
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
+  }
+
+  const clearFieldError = (field: string) => {
+    setFieldErrors((prev) => {
+      const newErrors = { ...prev }
+      delete newErrors[field as keyof typeof newErrors]
+      return newErrors
+    })
   }
 
   return (
@@ -81,10 +133,30 @@ export default function StudentLogin() {
           <CardDescription>スタンプカードでモチベーションアップ！</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">メールアドレス</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  clearFieldError("email")
+                  setError("") // 全体エラーもクリア
+                }}
+                className={fieldErrors.email ? "border-red-500" : ""}
+                disabled={loading}
+                required
+              />
+              {fieldErrors.email && <p className="text-sm text-red-500">{fieldErrors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">パスワード</Label>
@@ -92,9 +164,16 @@ export default function StudentLogin() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  clearFieldError("password")
+                  setError("") // 全体エラーもクリア
+                }}
+                className={fieldErrors.password ? "border-red-500" : ""}
+                disabled={loading}
                 required
               />
+              {fieldErrors.password && <p className="text-sm text-red-500">{fieldErrors.password}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
@@ -107,7 +186,7 @@ export default function StudentLogin() {
               )}
             </Button>
           </form>
-          {error && <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+
           <div className="mt-4 text-center space-y-2">
             <Link href="/student/register" className="text-sm text-blue-600 hover:underline">
               アカウントを作成

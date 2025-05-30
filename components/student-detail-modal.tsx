@@ -4,8 +4,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import { fetchWithAuth } from "@/lib/api-client"
-import { Loader2, Star, CheckCircle, Trophy, Gift, User } from "lucide-react"
+import { Loader2, Star, CheckCircle, Trophy, Gift, User, AlertCircle, RefreshCw } from "lucide-react"
 
 interface Stamp {
   position: number
@@ -83,7 +85,17 @@ export function StudentDetailModal({ studentId, isOpen, onClose }: StudentDetail
       setGifts(response.gifts || [])
     } catch (error: any) {
       console.error("Error fetching student detail:", error)
-      setError(error.message || "学生詳細の取得に失敗しました")
+      let errorMessage = "学生詳細の取得に失敗しました"
+
+      if (error.message.includes("Student not found")) {
+        errorMessage = "指定された学生が見つかりません"
+      } else if (error.message.includes("Failed to fetch")) {
+        errorMessage = "ネットワークエラーが発生しました。インターネット接続を確認してください"
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -95,6 +107,10 @@ export function StudentDetailModal({ studentId, isOpen, onClose }: StudentDetail
     setGifts([])
     setError(null)
     onClose()
+  }
+
+  const handleRetry = () => {
+    fetchStudentDetail()
   }
 
   // カードを分類
@@ -116,16 +132,24 @@ export function StudentDetailModal({ studentId, isOpen, onClose }: StudentDetail
         {loading && (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+            <span className="ml-2 text-gray-600">データを読み込み中...</span>
           </div>
         )}
 
         {error && (
-          <div className="text-center py-8">
-            <p className="text-red-500 mb-4">{error}</p>
-          </div>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>{error}</span>
+              <Button variant="outline" size="sm" onClick={handleRetry} className="ml-4">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                再試行
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
 
-        {student && !loading && (
+        {student && !loading && !error && (
           <div className="space-y-6">
             {/* 学生基本情報 */}
             <Card>
@@ -327,7 +351,7 @@ export function StudentDetailModal({ studentId, isOpen, onClose }: StudentDetail
                   </Card>
                 )}
 
-                {cards.length === 0 && (
+                {cards.length === 0 && !loading && (
                   <div className="text-center py-8 text-gray-500">まだスタンプカードがありません</div>
                 )}
               </TabsContent>
