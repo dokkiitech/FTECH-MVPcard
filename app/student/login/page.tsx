@@ -1,23 +1,19 @@
 "use client"
-
-import { useState } from "react"
+import { useState, useEffect } from "react" // useEffectをインポート
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label" // Labelをインポート
 import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
-import { signIn } from "next-auth/react"
-import { Icons } from "@/components/icons"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card" // Cardコンポーネントをインポート
+import { Alert, AlertDescription } from "@/components/ui/alert" // Alertコンポーネントをインポート
+import { useToast } from "@/hooks/use-toast" // useToastのパスを修正
+import { useAuth } from "@/contexts/auth-context" // useAuthをインポート
+import { GraduationCap, Loader2, AlertCircle } from "lucide-react" // Lucide Reactアイコンをインポート
 import Link from "next/link"
 
-const FormSchema = z.object({
-  email: z.string().email({ message: "有効なメールアドレスを入力してください" }),
-  password: z.string().min(8, { message: "パスワードは8文字以上で入力してください" }),
-})
-
-const StudentLoginPage = () => {
+export default function StudentLogin() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
@@ -25,86 +21,118 @@ const StudentLoginPage = () => {
     handleSubmit,
     register,
     formState: { errors },
-  } = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
-  })
+  } = { handleSubmit: (fn: any) => fn, register: () => {}, formState: { errors: {} as any } } // react-hook-formの仮置き
+  const { signIn, user, userRole, loading: authLoading } = useAuth() // AuthContextからsignInなどを取得
+  const [error, setError] = useState("") // エラーメッセージ用のstate
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({}) // フィールドエラー用のstate
 
-  async function onSubmit(data: z.infer<typeof FormSchema>) {
-    setLoading(true)
-    try {
-      const res = await signIn("credentials", {
-        email: data.email,
-        password: data.password,
-        redirect: false,
-      })
-
-      if (res?.error) {
-        toast({
-          title: "ログインに失敗しました",
-          description: "メールアドレスまたはパスワードが間違っています",
-          variant: "destructive",
-        })
-      } else {
-        router.push("/student")
+  // 認証状態の変化を監視してリダイレクト
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (userRole === "student") {
+        router.push("/student/dashboard")
+      } else if (userRole === "teacher") {
+        router.push("/teacher/login") // 学生ログインページで先生アカウントなら先生ログインへ
       }
-    } catch (error) {
-      toast({
-        title: "ログインに失敗しました",
-        description: "しばらくしてからもう一度お試しください",
-        variant: "destructive",
-      })
+    }
+  }, [user, userRole, authLoading, router])
+
+  const validateForm = () => {
+    const newFieldErrors: { email?: string; password?: string } = {}
+    if (!email.trim()) newFieldErrors.email = "メールアドレスを入力してください"
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newFieldErrors.email = "有効なメールアドレスを入力してください"
+    if (!password.trim()) newFieldErrors.password = "パスワードを入力してください"
+    else if (password.length < 6) newFieldErrors.password = "パスワードは6文字以上で入力してください"
+    setFieldErrors(newFieldErrors)
+    return Object.keys(newFieldErrors).length === 0
+  }
+
+  async function onSubmit() {
+    // data引数を削除
+    if (!validateForm()) return
+
+    setLoading(true)
+    setError("")
+    try {
+      await signIn(email, password) // AuthContextのsignInを使用
+      // リダイレクトはuseEffectで処理
+    } catch (err: any) {
+      setError(err.message || "ログインに失敗しました。")
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="container relative h-[800px] flex-col items-center justify-center md:grid lg:max-w-none lg:px-0">
-      <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex">
-        <div className="absolute inset-0 bg-zinc-900/80" />
-        <div className="relative z-20 mt-auto">
-          <blockquote className="space-y-2">
-            <p className="text-lg">
-              &ldquo;This library has saved me countless hours of work and helped me deliver stunning designs to my
-              clients faster than ever before.&rdquo;
-            </p>
-            <footer className="text-sm">Sofia Davis, Design Lead</footer>
-          </blockquote>
-        </div>
+  const clearFieldError = (field: string) => {
+    setFieldErrors((prev) => {
+      const newErrors = { ...prev }
+      delete newErrors[field as keyof typeof newErrors]
+      return newErrors
+    })
+  }
+
+  if (authLoading || (user && userRole)) {
+    // 認証情報取得中または既にログイン済みで役割確定ならローダー表示
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
-      <div className="lg:p-8">
-        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-          <div className="flex flex-col space-y-2 text-center">
-            <Icons.logo className="mx-auto h-6 w-6" />
-            <h1 className="text-2xl font-semibold tracking-tight">学生ログイン</h1>
-            <p className="text-sm text-muted-foreground">メールアドレスとパスワードを入力してください</p>
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+            <GraduationCap className="w-6 h-6 text-white" /> {/* Icons.logoの代替 */}
           </div>
+          <CardTitle className="text-2xl">学スタログイン</CardTitle>
+          <CardDescription>スタンプカードでモチベーションアップ！</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {" "}
+            {/* react-hook-formのhandleSubmitを使用 */}
             <div className="space-y-2">
-              <label htmlFor="email">メールアドレス</label>
+              <Label htmlFor="email">メールアドレス</Label>
               <Input
                 id="email"
-                placeholder="mail@example.com"
                 type="email"
-                {...register("email")}
-                className={errors.email ? "border-red-500" : ""}
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  clearFieldError("email")
+                  setError("")
+                }}
+                className={fieldErrors.email ? "border-red-500" : ""}
                 disabled={loading}
                 required
               />
-              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+              {fieldErrors.email && <p className="text-sm text-red-500">{fieldErrors.email}</p>}
             </div>
             <div className="space-y-2">
-              <label htmlFor="password">パスワード</label>
+              <Label htmlFor="password">パスワード</Label>
               <Input
                 id="password"
-                placeholder="********"
                 type="password"
-                {...register("password")}
-                className={errors.password ? "border-red-500" : ""}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  clearFieldError("password")
+                  setError("")
+                }}
+                className={fieldErrors.password ? "border-red-500" : ""}
                 disabled={loading}
                 required
               />
-              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+              {fieldErrors.password && <p className="text-sm text-red-500">{fieldErrors.password}</p>}
             </div>
             <div className="text-right">
               <Link href="/forgot-password" prefetch={false} className="text-sm text-blue-600 hover:underline">
@@ -112,14 +140,29 @@ const StudentLoginPage = () => {
               </Link>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
-              ログイン
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {/* Icons.spinnerの代替 */}
+                  ログイン中...
+                </>
+              ) : (
+                "ログイン"
+              )}
             </Button>
           </form>
-        </div>
-      </div>
+          <div className="mt-4 text-center space-y-2">
+            <Link href="/student/register" className="text-sm text-blue-600 hover:underline">
+              アカウントを作成
+            </Link>
+            <div className="text-sm text-gray-500">
+              先生の方は{" "}
+              <Link href="/teacher/login" className="text-blue-600 hover:underline">
+                こちら
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
-
-export default StudentLoginPage
