@@ -22,9 +22,17 @@ export default function StudentLogin() {
 
   // 認証状態の変化を監視してリダイレクト
   useEffect(() => {
-    if (!authLoading && user && userRole === "student") {
-      console.log("Student authenticated, redirecting to dashboard...")
-      router.push("/student/dashboard")
+    console.log("Auth state check:", { user: !!user, userRole, authLoading })
+
+    if (!authLoading && user) {
+      if (userRole === "student") {
+        console.log("Student authenticated, redirecting to dashboard...")
+        router.push("/student/dashboard")
+      } else if (userRole === "teacher") {
+        console.log("Teacher user on student login, redirecting to teacher login...")
+        router.push("/teacher/login")
+      }
+      // userRoleがnullの場合は待機（まだ取得中）
     }
   }, [user, userRole, authLoading, router])
 
@@ -37,7 +45,8 @@ export default function StudentLogin() {
     )
   }
 
-  if (user && userRole === "student") {
+  // ユーザーがログイン済みで役割が確定している場合
+  if (user && userRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />

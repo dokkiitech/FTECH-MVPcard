@@ -49,11 +49,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log("User role:", data.role)
             setUserRole(data.role)
           } else {
-            console.error("Failed to get user role")
+            console.error("Failed to get user role:", response.status)
+            // 役割取得に失敗した場合でもローディングを終了
             setUserRole(null)
           }
         } catch (error) {
           console.error("Error getting user role:", error)
+          // エラーが発生した場合でもローディングを終了
           setUserRole(null)
         }
       } else {
@@ -137,8 +139,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       console.log("Signing in user...")
-      await signInWithEmailAndPassword(auth, email, password)
-      console.log("User signed in successfully")
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      console.log("User signed in successfully:", userCredential.user.uid)
+
+      // ユーザーの役割を即座に取得
+      try {
+        const token = await userCredential.user.getIdToken()
+        const response = await fetch("/api/auth/user-role", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log("User role on login:", data.role)
+          setUserRole(data.role)
+        }
+      } catch (roleError) {
+        console.error("Error getting user role on login:", roleError)
+      }
     } catch (error: any) {
       console.error("SignIn error:", error)
       // Firebaseエラーを日本語メッセージに変換
