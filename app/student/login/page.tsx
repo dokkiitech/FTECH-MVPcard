@@ -4,25 +4,26 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
+import { GraduationCap } from "lucide-react"
 
-const LoginPage = () => {
+export default function StudentLogin() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const { signIn } = useAuth()
   const router = useRouter()
 
-  // 1. エラー状態を管理するstateを追加:
-  const [error, setError] = useState("")
-
-  // signIn関数を削除し、useAuthから取得
-  const { signIn } = useAuth()
-
-  // 2. handleSubmit関数でエラーハンドリングを改善:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError("") // エラーをクリア
+    setError("")
 
     try {
       await signIn(email, password)
@@ -36,57 +37,49 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-100">
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4 w-full max-w-md">
-        {/* フォームのタイトルと表示を日本語に変更 */}
-        <h2 className="text-2xl font-bold mb-6 text-center">学生ログイン</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            {/* ラベルを日本語に変更 */}
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-              メールアドレス
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="email"
-              type="email"
-              {/* プレースホルダーを日本語に変更 */}
-              placeholder="メールアドレス"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+            <GraduationCap className="w-6 h-6 text-white" />
           </div>
-          <div className="mb-6">
-            {/* ラベルを日本語に変更 */}\
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-              パスワード
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
-              id="password"
-              type="password"
-              {/* プレースホルダーを日本語に変更 */}
-              placeholder="パスワード"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            {/* ボタンテキストを日本語に変更 */}
-            <button
-              className=\"bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-              type="submit"
-              disabled={loading}
-            >
+          <CardTitle className="text-2xl">学スタログイン</CardTitle>
+          <CardDescription>スタンプカードでモチベーションアップ！</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">メールアドレス</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">パスワード</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "ログイン中..." : "ログイン"}
-            </button>
+            </Button>
+          </form>
+          {error && <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+          <div className="mt-4 text-center space-y-2">
+            <Link href="/student/register" className="text-sm text-blue-600 hover:underline">
+              アカウントを作成
+            </Link>
+            <div className="text-sm text-gray-500">
+              先生の方は{" "}
+              <Link href="/teacher/login" className="text-blue-600 hover:underline">
+                こちら
+              </Link>
+            </div>
           </div>
-        </form>
-        {/* 3. エラーメッセージを表示するUIを追加（フォームの後に）: */}
-        {error && <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
-
-export default LoginPage

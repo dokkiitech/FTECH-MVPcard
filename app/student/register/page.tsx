@@ -4,29 +4,30 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
+import { GraduationCap } from "lucide-react"
 
-const StudentRegisterPage = () => {
+export default function StudentRegister() {
   const [formData, setFormData] = useState({
-    name: "",
     email: "",
     password: "",
+    name: "",
     major: "",
   })
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
   const [error, setError] = useState("")
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
-
   const { signUp } = useAuth()
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError("") // エラーをクリア
+    setError("")
 
     try {
       await signUp(formData.email, formData.password, {
@@ -43,89 +44,60 @@ const StudentRegisterPage = () => {
     }
   }
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }))
+  }
+
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-100">
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Student Registration</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
-              Name
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="name"
-              type="text"
-              placeholder="Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+            <GraduationCap className="w-6 h-6 text-white" />
           </div>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-              Email
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="email"
-              type="email"
-              placeholder="Email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
+          <CardTitle className="text-2xl">学スタ登録</CardTitle>
+          <CardDescription>新しいアカウントを作成してスタンプカードを始めよう！</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">名前</Label>
+              <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="major">専攻</Label>
+              <Input id="major" name="major" value={formData.major} onChange={handleChange} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">メールアドレス</Label>
+              <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">パスワード</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "登録中..." : "アカウント作成"}
+            </Button>
+          </form>
+          {error && <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+          <div className="mt-4 text-center">
+            <Link href="/student/login" className="text-sm text-blue-600 hover:underline">
+              既にアカウントをお持ちの方はこちら
+            </Link>
           </div>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-              Password
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="password"
-              type="password"
-              placeholder="Password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="major">
-              Major
-            </label>
-            <select
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="major"
-              name="major"
-              value={formData.major}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select Major</option>
-              <option value="Computer Science">Computer Science</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Business">Business</option>
-              <option value="Arts">Arts</option>
-            </select>
-          </div>
-          <div className="flex items-center justify-between">
-            <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? "Registering..." : "Register"}
-            </button>
-          </div>
-        </form>
-        {error && <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
-
-export default StudentRegisterPage
