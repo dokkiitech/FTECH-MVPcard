@@ -4,28 +4,28 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useAuth } from "@/contexts/auth-context"
-import { BookOpen } from "lucide-react"
+import { signUp } from "@/lib/firebase/auth"
 
-export default function TeacherRegister() {
+const TeacherRegisterPage = () => {
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
-    name: "",
     registrationPassword: "",
   })
   const [loading, setLoading] = useState(false)
-  const { signUp } = useAuth()
+  const [error, setError] = useState("")
   const router = useRouter()
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError("") // エラーをクリア
+
     try {
       await signUp(formData.email, formData.password, {
         name: formData.name,
@@ -34,74 +34,93 @@ export default function TeacherRegister() {
         registrationPassword: formData.registrationPassword,
       })
       router.push("/teacher/dashboard")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error)
+      setError(error.message || "登録に失敗しました")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-white" />
+    <div className="flex justify-center items-center h-screen bg-gray-100">
+      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4 w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-6 text-center">先生登録</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
+              氏名
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="name"
+              type="text"
+              name="name"
+              placeholder="氏名"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
           </div>
-          <CardTitle className="text-2xl">先生登録</CardTitle>
-          <CardDescription>新しい先生アカウントを作成</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">名前</Label>
-              <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">メールアドレス</Label>
-              <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">パスワード</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="registrationPassword">登録用パスワード</Label>
-              <Input
-                id="registrationPassword"
-                name="registrationPassword"
-                type="password"
-                value={formData.registrationPassword}
-                onChange={handleChange}
-                placeholder="先生用の登録パスワード"
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
-              {loading ? "登録中..." : "アカウント作成"}
-            </Button>
-          </form>
-          <div className="mt-4 text-center">
-            <Link href="/teacher/login" className="text-sm text-green-600 hover:underline">
-              既にアカウントをお持ちの方はこちら
-            </Link>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+              メールアドレス
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="email"
+              type="email"
+              name="email"
+              placeholder="メールアドレス"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
           </div>
-        </CardContent>
-      </Card>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+              パスワード
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="password"
+              type="password"
+              name="password"
+              placeholder="パスワード"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="registrationPassword">
+              登録用パスワード
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="registrationPassword"
+              type="password"
+              name="registrationPassword"
+              placeholder="登録用パスワード"
+              value={formData.registrationPassword}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "登録中..." : "登録"}
+            </button>
+          </div>
+        </form>
+        {error && <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+      </div>
     </div>
   )
 }
+
+export default TeacherRegisterPage
