@@ -68,6 +68,8 @@ export async function POST(request: NextRequest) {
       try {
         // ユーザーをデータベースに保存
         console.log("Inserting user into database...")
+        console.log("User data:", { uid, role: "student", name, major, email })
+
         await connection.execute("INSERT INTO users (id, role, name, major, email) VALUES (?, ?, ?, ?, ?)", [
           uid,
           "student",
