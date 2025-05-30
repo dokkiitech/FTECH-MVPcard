@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchWithAuth } from "@/lib/api-client"
-import { BarChart3, Users, Gift, Star, Plus, Copy, Loader2, Upload, Trash2 } from "lucide-react"
+import { BarChart3, Users, Gift, Star, Plus, Copy, Loader2, Upload, Trash2, RefreshCw } from "lucide-react"
 import { storage } from "@/lib/firebase"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 
@@ -59,14 +59,14 @@ export default function TeacherDashboard() {
   const [newStampName, setNewStampName] = useState("")
   const [newStampImage, setNewStampImage] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [dataFetched, setDataFetched] = useState(false) // データ取得済みフラグ
+  const [error, setError] = useState<string | null>(null)
   const { user, userRole, logout, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
   // 認証状態をチェックしてリダイレクト
   useEffect(() => {
-    console.log("Teacher dashboard auth check:", { user: !!user, userRole, authLoading, dataFetched })
+    console.log("Teacher dashboard auth check:", { user: !!user, userRole, authLoading })
 
     if (!authLoading) {
       if (!user) {
@@ -81,23 +81,17 @@ export default function TeacherDashboard() {
         return
       }
 
-      if (user && userRole === "teacher" && !dataFetched) {
+      if (user && userRole === "teacher") {
         console.log("Teacher authenticated, fetching data...")
         fetchData()
       }
     }
-  }, [user, userRole, authLoading, router]) // dataFetchedを依存配列から削除
+  }, [user, userRole, authLoading, router])
 
   const fetchData = async () => {
-    // 既にデータを取得中または取得済みの場合は実行しない
-    if (dataFetched) {
-      console.log("Data fetch skipped - already fetched")
-      return
-    }
-
     try {
       setLoading(true)
-      setDataFetched(true) // データ取得開始をマーク
+      setError(null)
       console.log("Fetching teacher data...")
 
       // 統計情報を取得
@@ -107,8 +101,9 @@ export default function TeacherDashboard() {
         console.log("Stats response:", statsResponse)
         setStats(statsResponse.stats)
         setStudents(statsResponse.students || [])
-      } catch (statsError) {
+      } catch (statsError: any) {
         console.error("Stats fetch error:", statsError)
+        setError(`統計情報の取得に失敗しました: ${statsError.message}`)
         // 統計情報の取得に失敗してもコードとスタンプ画像は取得を試行
       }
 
@@ -118,8 +113,9 @@ export default function TeacherDashboard() {
         const codesResponse = await fetchWithAuth("/api/teacher/codes")
         console.log("Codes response:", codesResponse)
         setCodes(codesResponse.codes || [])
-      } catch (codesError) {
+      } catch (codesError: any) {
         console.error("Codes fetch error:", codesError)
+        if (!error) setError(`コード一覧の取得に失敗しました: ${codesError.message}`)
       }
 
       // スタンプ画像一覧を取得
@@ -128,14 +124,15 @@ export default function TeacherDashboard() {
         const stampImagesResponse = await fetchWithAuth("/api/teacher/stamp-images")
         console.log("Stamp images response:", stampImagesResponse)
         setStampImages(stampImagesResponse.stampImages || [])
-      } catch (stampError) {
+      } catch (stampError: any) {
         console.error("Stamp images fetch error:", stampError)
+        if (!error) setError(`スタンプ画像の取得に失敗しました: ${stampError.message}`)
       }
 
       console.log("Teacher data fetch completed")
     } catch (error: any) {
       console.error("Error fetching data:", error)
-      setDataFetched(false) // エラー時はフラグをリセット
+      setError(`データの取得に失敗しました: ${error.message}`)
       toast({
         title: "エラー",
         description: error.message || "データの取得に失敗しました",
@@ -304,7 +301,7 @@ export default function TeacherDashboard() {
   }
 
   // データ取得エラー時の表示
-  if (!loading && dataFetched && !stats && codes.length === 0 && stampImages.length === 0) {
+  if (!loading && error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
         <header className="bg-white shadow-sm border-b">
@@ -320,13 +317,9 @@ export default function TeacherDashboard() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card>
             <CardContent className="text-center py-8">
-              <p className="text-gray-500 mb-4">データの取得に失敗しました</p>
-              <Button
-                onClick={() => {
-                  setDataFetched(false)
-                  fetchData()
-                }}
-              >
+              <p className="text-red-500 mb-4">{error}</p>
+              <Button onClick={() => fetchData()} className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" />
                 再試行
               </Button>
             </CardContent>
@@ -350,13 +343,15 @@ export default function TeacherDashboard() {
             </div>
           </div>
         </header>
-        <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+          <p className="text-gray-600">データを読み込み中...</p>
         </div>
       </div>
     )
   }
 
+  // データが空の場合でも表示する（初期状態）
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
       <header className="bg-white shadow-sm border-b">
