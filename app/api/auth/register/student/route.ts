@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
 
         // 初期スタンプカードを1枚作成
         console.log("Creating initial stamp card...")
-        await connection.query("INSERT INTO stamp_cards (student_id) VALUES (?)", [uid])
-        console.log("Initial stamp card created")
+        const [cardResult] = await connection.query("INSERT INTO stamp_cards (student_id) VALUES (?)", [uid])
+        console.log("Initial stamp card created with ID:", (cardResult as any).insertId)
 
         // トランザクションをコミット
         await connection.commit()
