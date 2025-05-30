@@ -13,13 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchWithAuth } from "@/lib/api-client"
-import { BarChart3, Users, Gift, Star, Plus, Copy, Loader2, Upload, Trash2, RefreshCw } from "lucide-react"
+import { BarChart3, Users, Gift, Star, Plus, Copy, Loader2, Upload, Trash2, RefreshCw, Trophy } from "lucide-react"
 import { auth } from "@/lib/firebase"
 
 interface StatsData {
   totalStudents: number
   activeCards: number
   completedCards: number
+  exchangedCards: number
   stampsIssued: number
 }
 
@@ -29,6 +30,8 @@ interface StudentData {
   major: string
   total_stamps: number
   completed_cards: number
+  active_cards: number
+  exchanged_cards: number
 }
 
 interface CodeData {
@@ -431,6 +434,15 @@ export default function TeacherDashboard() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">交換済みカード</CardTitle>
+                  <Trophy className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.exchangedCards || 0}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">発行スタンプ</CardTitle>
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -690,9 +702,22 @@ export default function TeacherDashboard() {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <div className="text-sm font-medium">{student.total_stamps} スタンプ</div>
-                            <div className="text-sm text-gray-600">{student.completed_cards} 完成カード</div>
+                            <div className="text-sm text-gray-600">
+                              完成: {student.completed_cards} | アクティブ: {student.active_cards} | 交換済み:{" "}
+                              {student.exchanged_cards}
+                            </div>
                           </div>
-                          <Button size="sm" variant="outline">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              toast({
+                                title: "学生詳細",
+                                description: `${student.name}さんの詳細情報を表示します（実装予定）`,
+                                variant: "default",
+                              })
+                            }}
+                          >
                             詳細
                           </Button>
                         </div>

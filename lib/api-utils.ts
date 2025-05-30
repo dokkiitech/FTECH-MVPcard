@@ -36,7 +36,7 @@ export async function verifyAuthToken(request: NextRequest) {
 }
 
 export function generateCode(type: "stamp" | "gift"): string {
-  const prefix = type === "stamp" ? "STAMP" : "GIFT"
-  const randomString = Math.random().toString(36).substr(2, 6).toUpperCase()
-  return `${prefix}${randomString}`
+  // 5桁の数字コードを生成（10000-99999）
+  const randomNumber = Math.floor(Math.random() * 90000) + 10000
+  return randomNumber.toString()
 }

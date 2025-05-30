@@ -19,7 +19,47 @@ export async function POST(request: NextRequest) {
     const connection = await pool.getConnection()
 
     try {
-      const code = generateCode(type)
+      await connection.beginTransaction()
+
+      // 現在のコード数をチェック
+      const [codeCountResult] = await connection.execute(`
+        SELECT COUNT(*) as count FROM one_time_codes
+      `)
+      const currentCount = (codeCountResult as any[])[0].count
+
+      // 1000件を超える場合、最も古いコードを削除
+      if (currentCount >= 1000) {
+        await connection.execute(
+          `
+          DELETE FROM one_time_codes 
+          WHERE id IN (
+            SELECT id FROM (
+              SELECT id FROM one_time_codes 
+              ORDER BY created_at ASC 
+              LIMIT ?
+            ) as oldest
+          )
+        `,
+          [currentCount - 999],
+        )
+        console.log("Deleted old codes to maintain 1000 limit")
+      }
+
+      // 新しいコードを生成（重複チェック）
+      let code: string
+      let attempts = 0
+      let existingCode: any[] // Declare the variable here
+      do {
+        code = generateCode(type)[existingCode] = await connection.execute(
+          `SELECT id FROM one_time_codes WHERE code = ?`,
+          [code],
+        )
+        attempts++
+        if (attempts > 100) {
+          throw new Error("Failed to generate unique code after 100 attempts")
+        }
+      } while (existingCode.length > 0)
+
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + 7) // 7日後に期限切れ
 
@@ -31,11 +71,16 @@ export async function POST(request: NextRequest) {
         [code, type, stampImageId || null, teacherId, expiresAt],
       )
 
+      await connection.commit()
+
       return NextResponse.json({
         success: true,
         code,
         expiresAt: expiresAt.toISOString(),
       })
+    } catch (error) {
+      await connection.rollback()
+      throw error
     } finally {
       connection.release()
     }

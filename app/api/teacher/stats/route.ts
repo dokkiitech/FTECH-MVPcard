@@ -37,21 +37,32 @@ export async function GET(request: NextRequest) {
       console.log("Total students result:", totalStudentsResult)
       const totalStudents = (totalStudentsResult as any[])[0].count
 
-      // アクティブカード数（未完成）
+      // アクティブカード数（未完成かつ未交換）
       console.log("Querying active cards...")
       const [activeCardsResult] = await connection.query(`
-        SELECT COUNT(*) as count FROM stamp_cards WHERE is_completed = FALSE
+        SELECT COUNT(*) as count FROM stamp_cards 
+        WHERE is_completed = FALSE AND is_exchanged = FALSE
       `)
       console.log("Active cards result:", activeCardsResult)
       const activeCards = (activeCardsResult as any[])[0].count
 
-      // 完成カード数
+      // 完成カード数（完成済みかつ未交換）
       console.log("Querying completed cards...")
       const [completedCardsResult] = await connection.query(`
-        SELECT COUNT(*) as count FROM stamp_cards WHERE is_completed = TRUE
+        SELECT COUNT(*) as count FROM stamp_cards 
+        WHERE is_completed = TRUE AND is_exchanged = FALSE
       `)
       console.log("Completed cards result:", completedCardsResult)
       const completedCards = (completedCardsResult as any[])[0].count
+
+      // 交換済みカード数
+      console.log("Querying exchanged cards...")
+      const [exchangedCardsResult] = await connection.query(`
+        SELECT COUNT(*) as count FROM stamp_cards 
+        WHERE is_exchanged = TRUE
+      `)
+      console.log("Exchanged cards result:", exchangedCardsResult)
+      const exchangedCards = (exchangedCardsResult as any[])[0].count
 
       // 発行スタンプ数
       console.log("Querying stamps issued...")
@@ -69,7 +80,9 @@ export async function GET(request: NextRequest) {
           u.name,
           u.major,
           COUNT(DISTINCT s.id) as total_stamps,
-          COUNT(DISTINCT CASE WHEN sc.is_completed = TRUE THEN sc.id END) as completed_cards
+          COUNT(DISTINCT CASE WHEN sc.is_completed = TRUE AND sc.is_exchanged = FALSE THEN sc.id END) as completed_cards,
+          COUNT(DISTINCT CASE WHEN sc.is_completed = FALSE AND sc.is_exchanged = FALSE THEN sc.id END) as active_cards,
+          COUNT(DISTINCT CASE WHEN sc.is_exchanged = TRUE THEN sc.id END) as exchanged_cards
         FROM users u
         LEFT JOIN stamp_cards sc ON u.id = sc.student_id
         LEFT JOIN stamps s ON sc.id = s.card_id
@@ -84,6 +97,7 @@ export async function GET(request: NextRequest) {
           totalStudents,
           activeCards,
           completedCards,
+          exchangedCards,
           stampsIssued,
         },
         students: studentsResult,

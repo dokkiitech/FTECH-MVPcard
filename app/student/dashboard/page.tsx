@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchWithAuth } from "@/lib/api-client"
-import { Gift, Star, Trophy, Plus, Loader2 } from "lucide-react"
+import { Gift, Star, Trophy, Plus, Loader2, CheckCircle } from "lucide-react"
 
 interface Stamp {
   position: number
@@ -27,6 +27,8 @@ interface StampCard {
   stamp_count: number
   maxStamps: number
   stamps: Stamp[]
+  completed_at?: string
+  exchanged_at?: string
 }
 
 interface GiftItem {
@@ -211,6 +213,11 @@ export default function StudentDashboard() {
     )
   }
 
+  // カードを分類
+  const activeCards = cards.filter((card) => !card.is_completed && !card.is_exchanged)
+  const completedCards = cards.filter((card) => card.is_completed && !card.is_exchanged)
+  const exchangedCards = cards.filter((card) => card.is_exchanged)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="bg-white shadow-sm border-b">
@@ -227,64 +234,150 @@ export default function StudentDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* スタンプカード */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
+            {/* アクティブカード */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Star className="w-5 h-5" />
-                  スタンプカード
+                  アクティブカード
                 </CardTitle>
                 <CardDescription>3個のスタンプでギフトカードと交換できます</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {cards.map((card) => (
-                    <div key={card.id} className="border rounded-lg p-4 bg-white">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-sm font-medium">カード {card.id}</span>
-                        {card.is_completed && (
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            完成
-                          </Badge>
-                        )}
-                        {card.is_exchanged && (
-                          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                            交換済
-                          </Badge>
-                        )}
+                {activeCards.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">アクティブなカードがありません</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activeCards.map((card) => (
+                      <div key={card.id} className="border rounded-lg p-4 bg-white">
+                        <div className="flex gap-2 mb-3">
+                          {Array.from({ length: card.maxStamps }).map((_, i) => (
+                            <div
+                              key={i}
+                              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                                i < card.stamp_count ? "bg-yellow-400 border-yellow-500" : "bg-gray-100 border-gray-300"
+                              }`}
+                            >
+                              {i < card.stamp_count && card.stamps[i] && (
+                                <img
+                                  src={card.stamps[i].image_url || "/placeholder.svg?height=20&width=20"}
+                                  alt={card.stamps[i].stamp_name}
+                                  className="w-6 h-6 rounded-full object-cover"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {card.stamp_count}/{card.maxStamps} スタンプ
+                        </div>
                       </div>
-                      <div className="flex gap-2 mb-3">
-                        {Array.from({ length: card.maxStamps }).map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
-                              i < card.stamp_count ? "bg-yellow-400 border-yellow-500" : "bg-gray-100 border-gray-300"
-                            }`}
-                          >
-                            {i < card.stamp_count && card.stamps[i] && (
-                              <img
-                                src={card.stamps[i].image_url || "/placeholder.svg?height=20&width=20"}
-                                alt={card.stamps[i].stamp_name}
-                                className="w-6 h-6 rounded-full object-cover"
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {card.stamp_count}/{card.maxStamps} スタンプ
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* コレクション */}
-            <Card className="mt-6">
+            {/* 完成カード */}
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Trophy className="w-5 h-5" />
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  完成カード
+                </CardTitle>
+                <CardDescription>ギフトコードで交換可能なカード</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {completedCards.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">完成したカードがありません</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {completedCards.map((card) => (
+                      <div key={card.id} className="border rounded-lg p-4 bg-green-50 border-green-200">
+                        <div className="flex justify-between items-center mb-3">
+                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            完成
+                          </Badge>
+                        </div>
+                        <div className="flex gap-2 mb-3">
+                          {Array.from({ length: card.maxStamps }).map((_, i) => (
+                            <div
+                              key={i}
+                              className="w-8 h-8 rounded-full border-2 bg-yellow-400 border-yellow-500 flex items-center justify-center"
+                            >
+                              {card.stamps[i] && (
+                                <img
+                                  src={card.stamps[i].image_url || "/placeholder.svg?height=20&width=20"}
+                                  alt={card.stamps[i].stamp_name}
+                                  className="w-6 h-6 rounded-full object-cover"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          完成日: {card.completed_at ? new Date(card.completed_at).toLocaleDateString() : "不明"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 交換済みカード */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-blue-500" />
+                  交換済みカード
+                </CardTitle>
+                <CardDescription>ギフトと交換済みのカード</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {exchangedCards.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">まだカードを交換していません</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {exchangedCards.map((card) => (
+                      <div key={card.id} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                        <div className="flex justify-between items-center mb-3">
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                            交換済み
+                          </Badge>
+                        </div>
+                        <div className="flex gap-2 mb-3">
+                          {Array.from({ length: card.maxStamps }).map((_, i) => (
+                            <div
+                              key={i}
+                              className="w-8 h-8 rounded-full border-2 bg-gray-300 border-gray-400 flex items-center justify-center"
+                            >
+                              {card.stamps[i] && (
+                                <img
+                                  src={card.stamps[i].image_url || "/placeholder.svg?height=20&width=20"}
+                                  alt={card.stamps[i].stamp_name}
+                                  className="w-6 h-6 rounded-full object-cover opacity-60"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          交換日: {card.exchanged_at ? new Date(card.exchanged_at).toLocaleDateString() : "不明"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ギフトコレクション */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Gift className="w-5 h-5" />
                   ギフトコレクション
                 </CardTitle>
                 <CardDescription>交換済みのギフトカード一覧</CardDescription>
@@ -323,17 +416,19 @@ export default function StudentDashboard() {
                   <Plus className="w-5 h-5" />
                   スタンプ取得
                 </CardTitle>
-                <CardDescription>先生からもらったコードを入力してスタンプをゲット！</CardDescription>
+                <CardDescription>先生からもらった5桁のコードを入力してスタンプをゲット！</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleStampSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="stampCode">スタンプコード</Label>
+                    <Label htmlFor="stampCode">スタンプコード（5桁）</Label>
                     <Input
                       id="stampCode"
                       value={stampCode}
                       onChange={(e) => setStampCode(e.target.value)}
-                      placeholder="コードを入力"
+                      placeholder="12345"
+                      maxLength={5}
+                      pattern="[0-9]{5}"
                       disabled={submitting}
                     />
                   </div>
@@ -362,16 +457,18 @@ export default function StudentDashboard() {
               <CardContent>
                 <form onSubmit={handleGiftSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="giftCode">ギフト交換コード</Label>
+                    <Label htmlFor="giftCode">ギフト交換コード（5桁）</Label>
                     <Input
                       id="giftCode"
                       value={giftCode}
                       onChange={(e) => setGiftCode(e.target.value)}
-                      placeholder="交換コードを入力"
+                      placeholder="54321"
+                      maxLength={5}
+                      pattern="[0-9]{5}"
                       disabled={submitting}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={submitting}>
+                  <Button type="submit" className="w-full" disabled={submitting || completedCards.length === 0}>
                     {submitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -381,6 +478,9 @@ export default function StudentDashboard() {
                       "ギフトと交換"
                     )}
                   </Button>
+                  {completedCards.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center">完成したカードがありません</p>
+                  )}
                 </form>
               </CardContent>
             </Card>
