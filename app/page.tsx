@@ -8,7 +8,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-green-50">
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">学スタMVPcard</h1>
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">学スタMVP</h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             スタンプを集めてギフトカードと交換！
             <br />
@@ -39,7 +39,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-gray-600">
-                3個のスタンプでカード完成！モチベーションを維持しながら勤務しよう。
+                3個のスタンプでカード完成！モチベーションを維持しながら学習を進めよう。
               </p>
             </CardContent>
           </Card>

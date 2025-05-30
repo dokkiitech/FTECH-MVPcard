@@ -28,6 +28,3 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
-
-## setup
-pm2 delete MVPcard && git add . && git pull --rebase && npm run build && pm2 start npm --name MVPcard -- start -- --port 3005 && pm2 startup
