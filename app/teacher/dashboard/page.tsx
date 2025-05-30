@@ -86,12 +86,12 @@ export default function TeacherDashboard() {
         fetchData()
       }
     }
-  }, [user, userRole, authLoading, dataFetched, router])
+  }, [user, userRole, authLoading, router]) // dataFetchedを依存配列から削除
 
   const fetchData = async () => {
     // 既にデータを取得中または取得済みの場合は実行しない
-    if (dataFetched || loading) {
-      console.log("Data fetch skipped - already fetched or in progress")
+    if (dataFetched) {
+      console.log("Data fetch skipped - already fetched")
       return
     }
 
@@ -101,19 +101,38 @@ export default function TeacherDashboard() {
       console.log("Fetching teacher data...")
 
       // 統計情報を取得
-      const statsResponse = await fetchWithAuth("/api/teacher/stats")
-      setStats(statsResponse.stats)
-      setStudents(statsResponse.students || [])
+      console.log("Fetching stats...")
+      try {
+        const statsResponse = await fetchWithAuth("/api/teacher/stats")
+        console.log("Stats response:", statsResponse)
+        setStats(statsResponse.stats)
+        setStudents(statsResponse.students || [])
+      } catch (statsError) {
+        console.error("Stats fetch error:", statsError)
+        // 統計情報の取得に失敗してもコードとスタンプ画像は取得を試行
+      }
 
       // コード一覧を取得
-      const codesResponse = await fetchWithAuth("/api/teacher/codes")
-      setCodes(codesResponse.codes || [])
+      console.log("Fetching codes...")
+      try {
+        const codesResponse = await fetchWithAuth("/api/teacher/codes")
+        console.log("Codes response:", codesResponse)
+        setCodes(codesResponse.codes || [])
+      } catch (codesError) {
+        console.error("Codes fetch error:", codesError)
+      }
 
       // スタンプ画像一覧を取得
-      const stampImagesResponse = await fetchWithAuth("/api/teacher/stamp-images")
-      setStampImages(stampImagesResponse.stampImages || [])
+      console.log("Fetching stamp images...")
+      try {
+        const stampImagesResponse = await fetchWithAuth("/api/teacher/stamp-images")
+        console.log("Stamp images response:", stampImagesResponse)
+        setStampImages(stampImagesResponse.stampImages || [])
+      } catch (stampError) {
+        console.error("Stamp images fetch error:", stampError)
+      }
 
-      console.log("Teacher data fetched successfully")
+      console.log("Teacher data fetch completed")
     } catch (error: any) {
       console.error("Error fetching data:", error)
       setDataFetched(false) // エラー時はフラグをリセット
@@ -124,6 +143,7 @@ export default function TeacherDashboard() {
       })
     } finally {
       setLoading(false)
+      console.log("Loading state set to false")
     }
   }
 
@@ -281,6 +301,39 @@ export default function TeacherDashboard() {
   // ユーザーが認証されていない、または先生でない場合
   if (!user || (userRole && userRole !== "teacher")) {
     return null // useEffectでリダイレクトされる
+  }
+
+  // データ取得エラー時の表示
+  if (!loading && dataFetched && !stats && codes.length === 0 && stampImages.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <h1 className="text-xl font-semibold text-gray-900">先生ダッシュボード</h1>
+              <Button variant="outline" onClick={handleLogout}>
+                ログアウト
+              </Button>
+            </div>
+          </div>
+        </header>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card>
+            <CardContent className="text-center py-8">
+              <p className="text-gray-500 mb-4">データの取得に失敗しました</p>
+              <Button
+                onClick={() => {
+                  setDataFetched(false)
+                  fetchData()
+                }}
+              >
+                再試行
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    )
   }
 
   // データ取得中の表示
