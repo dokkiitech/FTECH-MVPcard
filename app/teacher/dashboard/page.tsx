@@ -59,23 +59,45 @@ export default function TeacherDashboard() {
   const [newStampName, setNewStampName] = useState("")
   const [newStampImage, setNewStampImage] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const { user, logout } = useAuth()
+  const [dataFetched, setDataFetched] = useState(false) // データ取得済みフラグ
+  const { user, userRole, logout, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
+  // 認証状態をチェックしてリダイレクト
   useEffect(() => {
-    if (user) {
-      console.log("Teacher authenticated, fetching data...")
-      fetchData()
-    } else if (!loading) {
-      console.log("No user found, redirecting to login...")
-      router.push("/teacher/login")
+    console.log("Teacher dashboard auth check:", { user: !!user, userRole, authLoading, dataFetched })
+
+    if (!authLoading) {
+      if (!user) {
+        console.log("No user found, redirecting to login...")
+        router.push("/teacher/login")
+        return
+      }
+
+      if (userRole && userRole !== "teacher") {
+        console.log("User is not a teacher, redirecting...")
+        router.push("/")
+        return
+      }
+
+      if (user && userRole === "teacher" && !dataFetched) {
+        console.log("Teacher authenticated, fetching data...")
+        fetchData()
+      }
     }
-  }, [user, loading, router])
+  }, [user, userRole, authLoading, dataFetched, router])
 
   const fetchData = async () => {
+    // 既にデータを取得中または取得済みの場合は実行しない
+    if (dataFetched || loading) {
+      console.log("Data fetch skipped - already fetched or in progress")
+      return
+    }
+
     try {
       setLoading(true)
+      setDataFetched(true) // データ取得開始をマーク
       console.log("Fetching teacher data...")
 
       // 統計情報を取得
@@ -94,6 +116,7 @@ export default function TeacherDashboard() {
       console.log("Teacher data fetched successfully")
     } catch (error: any) {
       console.error("Error fetching data:", error)
+      setDataFetched(false) // エラー時はフラグをリセット
       toast({
         title: "エラー",
         description: error.message || "データの取得に失敗しました",
@@ -146,7 +169,9 @@ export default function TeacherDashboard() {
         variant: "default",
       })
 
-      fetchData() // データを再取得
+      // コード一覧のみを再取得
+      const codesResponse = await fetchWithAuth("/api/teacher/codes")
+      setCodes(codesResponse.codes || [])
     } catch (error: any) {
       console.error("Error generating code:", error)
       toast({
@@ -191,7 +216,10 @@ export default function TeacherDashboard() {
 
       setNewStampName("")
       setNewStampImage(null)
-      fetchData() // データを再取得
+
+      // スタンプ画像一覧のみを再取得
+      const stampImagesResponse = await fetchWithAuth("/api/teacher/stamp-images")
+      setStampImages(stampImagesResponse.stampImages || [])
     } catch (error: any) {
       console.error("Error uploading stamp image:", error)
       toast({
@@ -219,7 +247,9 @@ export default function TeacherDashboard() {
         variant: "default",
       })
 
-      fetchData() // データを再取得
+      // スタンプ画像一覧のみを再取得
+      const stampImagesResponse = await fetchWithAuth("/api/teacher/stamp-images")
+      setStampImages(stampImagesResponse.stampImages || [])
     } catch (error: any) {
       console.error("Error toggling stamp active state:", error)
       toast({
@@ -239,8 +269,8 @@ export default function TeacherDashboard() {
     })
   }
 
-  // ローディング中の表示
-  if (loading) {
+  // 認証チェック中の表示
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-green-500" />
@@ -248,9 +278,30 @@ export default function TeacherDashboard() {
     )
   }
 
-  // ユーザーが認証されていない場合
-  if (!user) {
+  // ユーザーが認証されていない、または先生でない場合
+  if (!user || (userRole && userRole !== "teacher")) {
     return null // useEffectでリダイレクトされる
+  }
+
+  // データ取得中の表示
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <h1 className="text-xl font-semibold text-gray-900">先生ダッシュボード</h1>
+              <Button variant="outline" onClick={handleLogout}>
+                ログアウト
+              </Button>
+            </div>
+          </div>
+        </header>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+        </div>
+      </div>
+    )
   }
 
   return (
