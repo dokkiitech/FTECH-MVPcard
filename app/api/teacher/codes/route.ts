@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
           used_by IS NOT NULL as used,
           used_by,
           used_at,
-          created_at
+          created_at,
+          expires_at
         FROM one_time_codes
         ORDER BY created_at DESC
       `)

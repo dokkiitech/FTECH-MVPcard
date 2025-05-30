@@ -42,6 +42,8 @@ interface CodeData {
   used: boolean
   used_by: string | null
   created_at: string
+  used_at: string | null
+  expires_at: string
 }
 
 interface StampImage {
@@ -68,6 +70,9 @@ export default function TeacherDashboard() {
   const { user, userRole, logout, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const [activeTab, setActiveTab] = useState("overview")
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [isPolling, setIsPolling] = useState(false)
 
   // 認証状態をチェックしてリダイレクト
   useEffect(() => {
@@ -148,6 +153,45 @@ export default function TeacherDashboard() {
       console.log("Loading state set to false")
     }
   }
+
+  // コード管理タブでのリアルタイム更新
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null
+
+    if (activeTab === "codes" && user && userRole === "teacher") {
+      console.log("Starting real-time polling for codes...")
+      setIsPolling(true)
+
+      const pollCodes = async () => {
+        try {
+          console.log("Polling codes...")
+          const codesResponse = await fetchWithAuth("/api/teacher/codes")
+          setCodes(codesResponse.codes || [])
+          setLastUpdated(new Date())
+        } catch (error: any) {
+          console.error("Error polling codes:", error)
+          // ポーリング中のエラーは静かに処理（ユーザーに通知しない）
+        }
+      }
+
+      // 初回実行
+      pollCodes()
+
+      // 1秒間隔でポーリング
+      intervalId = setInterval(pollCodes, 1000)
+    } else {
+      setIsPolling(false)
+    }
+
+    // クリーンアップ
+    return () => {
+      if (intervalId) {
+        console.log("Stopping real-time polling for codes...")
+        clearInterval(intervalId)
+        setIsPolling(false)
+      }
+    }
+  }, [activeTab, user, userRole])
 
   const handleLogout = async () => {
     try {
@@ -408,7 +452,7 @@ export default function TeacherDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">概要</TabsTrigger>
             <TabsTrigger value="codes">コード管理</TabsTrigger>
@@ -573,35 +617,91 @@ export default function TeacherDashboard() {
               {/* 発行済みコード */}
               <Card>
                 <CardHeader>
-                  <CardTitle>発行済みコード</CardTitle>
-                  <CardDescription>最近発行されたコード一覧</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>発行済みコード</CardTitle>
+                      <CardDescription>最近発行されたコード一覧</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      {isPolling && (
+                        <>
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span>リアルタイム更新中</span>
+                        </>
+                      )}
+                      {lastUpdated && <span className="text-xs">最終更新: {lastUpdated.toLocaleTimeString()}</span>}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {codes.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">まだコードが発行されていません</div>
                   ) : (
                     <div className="space-y-3">
-                      {codes.slice(0, 10).map((code) => (
-                        <div key={code.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <code className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{code.code}</code>
-                              <Badge variant={code.type === "stamp" ? "default" : "secondary"}>
-                                {code.type === "stamp" ? "スタンプ" : "ギフト"}
-                              </Badge>
-                              <Badge variant={code.used ? "destructive" : "outline"}>
-                                {code.used ? "使用済み" : "未使用"}
-                              </Badge>
+                      {codes.slice(0, 10).map((code) => {
+                        const isExpired = new Date() > new Date(code.expires_at)
+                        const isUsable = !code.used && !isExpired
+
+                        return (
+                          <div
+                            key={code.id}
+                            className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                              code.used
+                                ? "bg-gray-50 border-gray-200"
+                                : isExpired
+                                  ? "bg-red-50 border-red-200"
+                                  : "bg-white border-green-200"
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <code
+                                  className={`text-sm font-mono px-2 py-1 rounded ${
+                                    code.used
+                                      ? "bg-gray-200 text-gray-600"
+                                      : isExpired
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-green-100 text-green-800"
+                                  }}`}
+                                >
+                                  {code.code}
+                                </code>
+                                <Badge variant={code.type === "stamp" ? "default" : "secondary"}>
+                                  {code.type === "stamp" ? "スタンプ" : "ギフト"}
+                                </Badge>
+                                <Badge
+                                  variant={code.used ? "destructive" : isExpired ? "destructive" : "outline"}
+                                  className={isUsable ? "border-green-500 text-green-700" : ""}
+                                >
+                                  {code.used ? "使用済み" : isExpired ? "期限切れ" : "未使用"}
+                                </Badge>
+                                {isUsable && (
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    <span className="text-xs text-green-600">利用可能</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                発行: {new Date(code.created_at).toLocaleString()}
+                                {code.used && code.used_at && (
+                                  <span className="ml-2">使用: {new Date(code.used_at).toLocaleString()}</span>
+                                )}
+                                <span className="ml-2">期限: {new Date(code.expires_at).toLocaleString()}</span>
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {new Date(code.created_at).toLocaleString()}
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => copyToClipboard(code.code)}
+                              disabled={!isUsable}
+                              className={!isUsable ? "opacity-50" : ""}
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <Button size="sm" variant="ghost" onClick={() => copyToClipboard(code.code)}>
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </CardContent>
