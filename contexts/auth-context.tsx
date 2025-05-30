@@ -3,7 +3,13 @@
 import type React from "react"
 
 import { createContext, useContext, useState, useEffect } from "react"
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth"
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail, // 追加
+} from "firebase/auth"
 import { auth } from "@/lib/firebase"
 
 interface UserData {
@@ -20,6 +26,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, userData: UserData) => Promise<void>
   logout: () => Promise<void>
+  sendPasswordReset: (email: string) => Promise<void> // 追加
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -35,7 +42,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser)
 
       if (currentUser) {
-        // ユーザーの役割を取得
         try {
           const token = await currentUser.getIdToken()
           const response = await fetch("/api/auth/user-role", {
@@ -50,12 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserRole(data.role)
           } else {
             console.error("Failed to get user role:", response.status)
-            // 役割取得に失敗した場合でもローディングを終了
             setUserRole(null)
           }
         } catch (error) {
           console.error("Error getting user role:", error)
-          // エラーが発生した場合でもローディングを終了
           setUserRole(null)
         }
       } else {
@@ -73,7 +77,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       console.log("Firebase user created successfully:", userCredential.user.uid)
 
-      // データベースにユーザー情報を保存
       const endpoint = userData.role === "student" ? "/api/auth/register/student" : "/api/auth/register/teacher"
       console.log("Calling endpoint:", endpoint)
 
@@ -102,7 +105,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
         console.error("API error response:", errorData)
 
-        // Firebase Authからユーザーを削除（ロールバック）
         try {
           await userCredential.user.delete()
           console.log("Firebase user deleted due to API error")
@@ -115,13 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const responseData = await response.json()
       console.log("API success response:", responseData)
-
-      // ユーザーの役割を設定
       setUserRole(userData.role)
     } catch (error: any) {
       console.error("SignUp error details:", error)
-
-      // Firebaseエラーを日本語メッセージに変換
       if (error.code === "auth/email-already-in-use") {
         throw new Error("このメールアドレスは既に使用されています")
       } else if (error.code === "auth/weak-password") {
@@ -141,8 +139,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Signing in user...")
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       console.log("User signed in successfully:", userCredential.user.uid)
-
-      // ユーザーの役割を即座に取得
       try {
         const token = await userCredential.user.getIdToken()
         const response = await fetch("/api/auth/user-role", {
@@ -161,7 +157,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error: any) {
       console.error("SignIn error:", error)
-      // Firebaseエラーを日本語メッセージに変換
       if (error.code === "auth/user-not-found") {
         throw new Error("このメールアドレスは登録されていません")
       } else if (error.code === "auth/wrong-password") {
@@ -188,6 +183,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // パスワードリセットメール送信関数
+  const sendPasswordReset = async (email: string) => {
+    try {
+      console.log("Sending password reset email to:", email)
+      await sendPasswordResetEmail(auth, email)
+      console.log("Password reset email sent successfully")
+    } catch (error: any) {
+      console.error("Password reset error:", error)
+      if (error.code === "auth/invalid-email") {
+        throw new Error("無効なメールアドレスです。")
+      } else if (error.code === "auth/user-not-found") {
+        throw new Error("このメールアドレスは登録されていません。")
+      } else {
+        throw new Error(error.message || "パスワードリセットメールの送信に失敗しました。")
+      }
+    }
+  }
+
   const value = {
     user,
     loading,
@@ -195,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     logout,
+    sendPasswordReset, // 追加
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
