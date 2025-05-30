@@ -12,14 +12,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert" // Alertコンポーネントをインポート
 import { useAuth } from "@/contexts/auth-context" // useAuthをインポート
 import { Icons } from "@/components/icons" // Lucide Reactアイコンをインポート
-import { useSession } from "next-auth/react" // useSessionをインポート
+// import { useSession } from "next-auth/react" // useSessionをインポート
 
 export default function TeacherLoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const { status } = useSession()
+  // const { status } = useSession()
   const { signIn, user, userRole, loading: authLoading } = useAuth() // AuthContextからsignInなどを取得
   const [error, setError] = useState("") // エラーメッセージ用のstate
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({}) // フィールドエラー用のstate
