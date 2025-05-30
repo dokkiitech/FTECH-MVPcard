@@ -1,0 +1,35 @@
+import type { NextRequest } from "next/server"
+import { getAuth } from "firebase-admin/auth"
+import { initializeApp, getApps, cert } from "firebase-admin/app"
+
+// Firebase Admin初期化
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
+  })
+}
+
+export async function verifyAuthToken(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("authorization")
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new Error("No valid authorization header")
+    }
+
+    const token = authHeader.split("Bearer ")[1]
+    const decodedToken = await getAuth().verifyIdToken(token)
+    return decodedToken
+  } catch (error) {
+    throw new Error("Invalid authentication token")
+  }
+}
+
+export function generateCode(type: "stamp" | "gift"): string {
+  const prefix = type === "stamp" ? "STAMP" : "GIFT"
+  const randomString = Math.random().toString(36).substr(2, 6).toUpperCase()
+  return `${prefix}${randomString}`
+}
