@@ -16,6 +16,7 @@ interface UserData {
 interface AuthContextType {
   user: any
   loading: boolean
+  userRole: "student" | "teacher" | null
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, userData: UserData) => Promise<void>
   logout: () => Promise<void>
@@ -25,11 +26,40 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState(null)
+  const [userRole, setUserRole] = useState<"student" | "teacher" | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      console.log("Auth state changed:", currentUser?.uid)
       setUser(currentUser)
+
+      if (currentUser) {
+        // ユーザーの役割を取得
+        try {
+          const token = await currentUser.getIdToken()
+          const response = await fetch("/api/auth/user-role", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            console.log("User role:", data.role)
+            setUserRole(data.role)
+          } else {
+            console.error("Failed to get user role")
+            setUserRole(null)
+          }
+        } catch (error) {
+          console.error("Error getting user role:", error)
+          setUserRole(null)
+        }
+      } else {
+        setUserRole(null)
+      }
+
       setLoading(false)
     })
     return () => unsubscribe()
@@ -83,6 +113,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const responseData = await response.json()
       console.log("API success response:", responseData)
+
+      // ユーザーの役割を設定
+      setUserRole(userData.role)
     } catch (error: any) {
       console.error("SignUp error details:", error)
 
@@ -103,8 +136,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log("Signing in user...")
       await signInWithEmailAndPassword(auth, email, password)
+      console.log("User signed in successfully")
     } catch (error: any) {
+      console.error("SignIn error:", error)
       // Firebaseエラーを日本語メッセージに変換
       if (error.code === "auth/user-not-found") {
         throw new Error("このメールアドレスは登録されていません")
@@ -121,12 +157,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
-    await signOut(auth)
+    try {
+      console.log("Logging out user...")
+      await signOut(auth)
+      setUserRole(null)
+      console.log("User logged out successfully")
+    } catch (error) {
+      console.error("Logout error:", error)
+      throw error
+    }
   }
 
   const value = {
     user,
     loading,
+    userRole,
     signIn,
     signUp,
     logout,

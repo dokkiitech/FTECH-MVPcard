@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -10,15 +10,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
-import { BookOpen } from "lucide-react"
+import { BookOpen, Loader2 } from "lucide-react"
 
 export default function TeacherLogin() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const { signIn } = useAuth()
+  const { signIn, user, userRole, loading: authLoading } = useAuth()
   const router = useRouter()
+
+  // 認証状態の変化を監視してリダイレクト
+  useEffect(() => {
+    if (!authLoading && user && userRole === "teacher") {
+      console.log("Teacher authenticated, redirecting to dashboard...")
+      router.push("/teacher/dashboard")
+    }
+  }, [user, userRole, authLoading, router])
+
+  // 既にログイン済みの場合は早期リターン
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
+        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+      </div>
+    )
+  }
+
+  if (user && userRole === "teacher") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
+        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+      </div>
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,7 +52,7 @@ export default function TeacherLogin() {
 
     try {
       await signIn(email, password)
-      router.push("/teacher/dashboard")
+      // リダイレクトはuseEffectで処理される
     } catch (error: any) {
       console.error("Login error:", error)
       setError(error.message || "ログインに失敗しました")
@@ -63,7 +88,14 @@ export default function TeacherLogin() {
               />
             </div>
             <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
-              {loading ? "ログイン中..." : "ログイン"}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ログイン中...
+                </>
+              ) : (
+                "ログイン"
+              )}
             </Button>
           </form>
           {error && <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}

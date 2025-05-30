@@ -43,19 +43,31 @@ export default function StudentDashboard() {
   const [collection, setCollection] = useState<GiftItem[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const { user, logout } = useAuth()
+  const { user, userRole, logout, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
+  // 認証状態をチェックしてリダイレクト
   useEffect(() => {
-    if (user) {
-      console.log("User authenticated, fetching data...")
-      fetchData()
-    } else if (!loading) {
-      console.log("No user found, redirecting to login...")
-      router.push("/student/login")
+    if (!authLoading) {
+      if (!user) {
+        console.log("No user found, redirecting to login...")
+        router.push("/student/login")
+        return
+      }
+
+      if (userRole && userRole !== "student") {
+        console.log("User is not a student, redirecting...")
+        router.push("/")
+        return
+      }
+
+      if (user && userRole === "student") {
+        console.log("Student authenticated, fetching data...")
+        fetchData()
+      }
     }
-  }, [user, loading, router])
+  }, [user, userRole, authLoading, router])
 
   const fetchData = async () => {
     try {
@@ -164,8 +176,8 @@ export default function StudentDashboard() {
     }
   }
 
-  // ローディング中の表示
-  if (loading) {
+  // 認証チェック中の表示
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -173,9 +185,30 @@ export default function StudentDashboard() {
     )
   }
 
-  // ユーザーが認証されていない場合
-  if (!user) {
+  // ユーザーが認証されていない、または学生でない場合
+  if (!user || (userRole && userRole !== "student")) {
     return null // useEffectでリダイレクトされる
+  }
+
+  // データ取得中の表示
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <h1 className="text-xl font-semibold text-gray-900">学スタダッシュボード</h1>
+              <Button variant="outline" onClick={handleLogout}>
+                ログアウト
+              </Button>
+            </div>
+          </div>
+        </header>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        </div>
+      </div>
+    )
   }
 
   return (
