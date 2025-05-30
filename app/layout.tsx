@@ -1,27 +1,30 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
-import { AuthProvider } from "@/contexts/auth-context"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "学スタMVPカードアプリ",
   description: "学生のモチベーションアップのためのスタンプカードアプリ",
-    generator: 'v0.dev'
+  generator: "v0.dev",
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "16x16", type: "image/x-icon" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon.ico",
+  },
+  manifest: "/manifest.json",
 }
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
-    <html lang="ja">
-      <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   )
 }
