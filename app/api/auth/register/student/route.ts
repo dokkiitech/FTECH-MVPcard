@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       // ユーザーが既に存在するかチェック
       console.log("Checking if user already exists...")
       try {
-        const [existingUsers] = await connection.execute("SELECT id FROM users WHERE id = ? OR email = ?", [uid, email])
+        const [existingUsers] = await connection.query("SELECT id FROM users WHERE id = ? OR email = ?", [uid, email])
         if ((existingUsers as any[]).length > 0) {
           console.log("User already exists")
           return NextResponse.json({ error: "このユーザーまたはメールアドレスは既に登録されています" }, { status: 409 })
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         console.log("Inserting user into database...")
         console.log("User data:", { uid, role: "student", name, major, email })
 
-        await connection.execute("INSERT INTO users (id, role, name, major, email) VALUES (?, ?, ?, ?, ?)", [
+        await connection.query("INSERT INTO users (id, role, name, major, email) VALUES (?, ?, ?, ?, ?)", [
           uid,
           "student",
           name,
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         // 初期スタンプカードを3枚作成
         console.log("Creating initial stamp cards...")
         for (let i = 0; i < 3; i++) {
-          await connection.execute("INSERT INTO stamp_cards (student_id) VALUES (?)", [uid])
+          await connection.query("INSERT INTO stamp_cards (student_id) VALUES (?)", [uid])
         }
         console.log("Initial stamp cards created")
 

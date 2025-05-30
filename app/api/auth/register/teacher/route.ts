@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       // ユーザーが既に存在するかチェック
       console.log("Checking if user already exists...")
       try {
-        const [existingUsers] = await connection.execute("SELECT id FROM users WHERE id = ? OR email = ?", [uid, email])
+        const [existingUsers] = await connection.query("SELECT id FROM users WHERE id = ? OR email = ?", [uid, email])
         if ((existingUsers as any[]).length > 0) {
           console.log("User already exists")
           return NextResponse.json({ error: "このユーザーまたはメールアドレスは既に登録されています" }, { status: 409 })
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         console.log("Inserting teacher into database...")
         console.log("Teacher data:", { uid, role: "teacher", name, email })
 
-        await connection.execute("INSERT INTO users (id, role, name, email) VALUES (?, ?, ?, ?)", [
+        await connection.query("INSERT INTO users (id, role, name, email) VALUES (?, ?, ?, ?)", [
           uid,
           "teacher",
           name,
