@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
 
       // カードが完成した場合の処理
       if (nextPosition === 3) {
+        // 現在のカードを完成済みにマーク
         await connection.execute(
           `
           UPDATE stamp_cards 
@@ -87,6 +88,17 @@ export async function POST(request: NextRequest) {
         `,
           [targetCard.id],
         )
+
+        // 新しいアクティブカードを作成
+        await connection.execute(
+          `
+          INSERT INTO stamp_cards (student_id)
+          VALUES (?)
+        `,
+          [studentId],
+        )
+
+        console.log("Card completed and new card created for student:", studentId)
       }
 
       // コードを使用済みにマーク
@@ -105,6 +117,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: "Stamp added successfully",
         cardCompleted: nextPosition === 3,
+        newCardCreated: nextPosition === 3,
       })
     } catch (error) {
       await connection.rollback()

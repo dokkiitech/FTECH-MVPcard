@@ -79,12 +79,10 @@ export async function POST(request: NextRequest) {
         ])
         console.log("User inserted successfully")
 
-        // 初期スタンプカードを3枚作成
-        console.log("Creating initial stamp cards...")
-        for (let i = 0; i < 3; i++) {
-          await connection.query("INSERT INTO stamp_cards (student_id) VALUES (?)", [uid])
-        }
-        console.log("Initial stamp cards created")
+        // 初期スタンプカードを1枚作成
+        console.log("Creating initial stamp card...")
+        await connection.query("INSERT INTO stamp_cards (student_id) VALUES (?)", [uid])
+        console.log("Initial stamp card created")
 
         // トランザクションをコミット
         await connection.commit()

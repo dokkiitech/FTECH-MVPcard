@@ -14,8 +14,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchWithAuth } from "@/lib/api-client"
 import { BarChart3, Users, Gift, Star, Plus, Copy, Loader2, Upload, Trash2, RefreshCw } from "lucide-react"
-import { storage } from "@/lib/firebase"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { auth } from "@/lib/firebase"
 
 interface StatsData {
   totalStudents: number
@@ -209,19 +208,44 @@ export default function TeacherDashboard() {
       setSubmitting(true)
       setUploadProgress(0)
 
-      // Firebase Storageにアップロード
-      const storageRef = ref(storage, `stamps/${Date.now()}_${newStampImage.name}`)
-      await uploadBytes(storageRef, newStampImage)
-      const imageUrl = await getDownloadURL(storageRef)
+      // FormDataを作成してローカルアップロードAPIに送信
+      const formData = new FormData()
+      formData.append("file", newStampImage)
+      formData.append("fileName", newStampName)
 
+      console.log("Uploading stamp image to local storage...")
+
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error("ユーザーが認証されていません")
+      }
+
+      const token = await user.getIdToken()
+
+      const uploadResponse = await fetch("/api/upload/stamp-image", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json()
+        throw new Error(errorData.error || "ファイルアップロードに失敗しました")
+      }
+
+      const uploadData = await uploadResponse.json()
       setUploadProgress(100)
+
+      console.log("File uploaded successfully:", uploadData.imagePath)
 
       // APIにスタンプ画像情報を保存
       await fetchWithAuth("/api/teacher/stamp-images", {
         method: "POST",
         body: JSON.stringify({
           name: newStampName,
-          imageUrl,
+          imageUrl: uploadData.imagePath, // ローカルパスを保存
         }),
       })
 
@@ -233,6 +257,7 @@ export default function TeacherDashboard() {
 
       setNewStampName("")
       setNewStampImage(null)
+      setUploadProgress(0)
 
       // スタンプ画像一覧のみを再取得
       const stampImagesResponse = await fetchWithAuth("/api/teacher/stamp-images")
