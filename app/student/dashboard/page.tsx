@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchWithAuth } from "@/lib/api-client"
-import { Gift, Star, Trophy, Plus, Loader2, CheckCircle } from "lucide-react"
+import { Star, Trophy, Plus, Loader2, CheckCircle, Gift } from "lucide-react"
 
 interface Stamp {
   position: number
@@ -31,18 +31,10 @@ interface StampCard {
   exchanged_at?: string
 }
 
-interface GiftItem {
-  id: number
-  gift_name: string
-  exchanged_at: string
-  image_url?: string
-}
-
 export default function StudentDashboard() {
   const [stampCode, setStampCode] = useState("")
   const [giftCode, setGiftCode] = useState("")
   const [cards, setCards] = useState<StampCard[]>([])
-  const [collection, setCollection] = useState<GiftItem[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const { user, userRole, logout, loading: authLoading } = useAuth()
@@ -79,10 +71,6 @@ export default function StudentDashboard() {
       // スタンプカードを取得
       const cardsResponse = await fetchWithAuth("/api/student/cards")
       setCards(cardsResponse.cards || [])
-
-      // ギフトコレクションを取得
-      const collectionResponse = await fetchWithAuth("/api/student/collection")
-      setCollection(collectionResponse.gifts || [])
 
       console.log("Data fetched successfully")
     } catch (error: any) {
@@ -365,40 +353,6 @@ export default function StudentDashboard() {
                         </div>
                         <div className="text-sm text-gray-600">
                           交換日: {card.exchanged_at ? new Date(card.exchanged_at).toLocaleDateString() : "不明"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* ギフトコレクション */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Gift className="w-5 h-5" />
-                  ギフトコレクション
-                </CardTitle>
-                <CardDescription>交換済みのギフトカード一覧</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {collection.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">まだギフトカードを交換していません</div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {collection.map((gift) => (
-                      <div key={gift.id} className="border rounded-lg p-4 bg-white">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={gift.image_url || "/placeholder.svg?height=100&width=100"}
-                            alt={gift.gift_name}
-                            className="w-12 h-12 rounded-lg object-cover"
-                          />
-                          <div>
-                            <h3 className="font-medium">{gift.gift_name}</h3>
-                            <p className="text-sm text-gray-600">{new Date(gift.exchanged_at).toLocaleDateString()}</p>
-                          </div>
                         </div>
                       </div>
                     ))}
