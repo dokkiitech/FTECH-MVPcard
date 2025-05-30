@@ -47,18 +47,22 @@ export async function POST(request: NextRequest) {
 
       // 新しいコードを生成（重複チェック）
       let code: string
+      let isUnique = false
       let attempts = 0
-      let existingCode: any[] // Declare the variable here
-      do {
-        code = generateCode(type)[existingCode] = await connection.execute(
-          `SELECT id FROM one_time_codes WHERE code = ?`,
-          [code],
-        )
+
+      while (!isUnique && attempts < 100) {
+        code = generateCode(type)
         attempts++
-        if (attempts > 100) {
-          throw new Error("Failed to generate unique code after 100 attempts")
-        }
-      } while (existingCode.length > 0)
+
+        // 重複チェック
+        const [existingCodes] = await connection.execute(`SELECT id FROM one_time_codes WHERE code = ?`, [code])
+
+        isUnique = (existingCodes as any[]).length === 0
+      }
+
+      if (!isUnique) {
+        throw new Error("Failed to generate unique code after 100 attempts")
+      }
 
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + 7) // 7日後に期限切れ
