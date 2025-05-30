@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert" // Alertコンポーネントをインポート
 import { useToast } from "@/hooks/use-toast" // useToastのパスを修正
 import { useAuth } from "@/contexts/auth-context" // useAuthをインポート
-import { GraduationCap, Loader2, AlertCircle } from "lucide-react" // Lucide Reactアイコンをインポート
+import { Icons } from "@/components/icons" // Lucide Reactアイコンをインポート
 import Link from "next/link"
 
 export default function StudentLogin() {
@@ -75,7 +75,7 @@ export default function StudentLogin() {
     // 認証情報取得中または既にログイン済みで役割確定ならローダー表示
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Icons.spinner className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     )
   }
@@ -85,7 +85,7 @@ export default function StudentLogin() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-            <GraduationCap className="w-6 h-6 text-white" /> {/* Icons.logoの代替 */}
+            <Icons.graduationCap className="w-6 h-6 text-white" /> {/* Icons.logoの代替 */}
           </div>
           <CardTitle className="text-2xl">学スタログイン</CardTitle>
           <CardDescription>スタンプカードでモチベーションアップ！</CardDescription>
@@ -93,7 +93,7 @@ export default function StudentLogin() {
         <CardContent>
           {error && (
             <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
+              <Icons.alertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -142,7 +142,7 @@ export default function StudentLogin() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {/* Icons.spinnerの代替 */}
+                  <Icons.spinner className="mr-2 h-4 w-4 animate-spin" /> {/* Icons.spinnerの代替 */}
                   ログイン中...
                 </>
               ) : (

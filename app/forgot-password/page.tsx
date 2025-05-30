@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/contexts/auth-context"
-import { Mail, Loader2, AlertCircle, CheckCircle } from "lucide-react"
+import { Icons } from "@/components/icons"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-            <Mail className="w-6 h-6 text-white" />
+            <Icons.mail className="w-6 h-6 text-white" />
           </div>
           <CardTitle className="text-2xl">パスワードをお忘れですか？</CardTitle>
           <CardDescription>
@@ -68,13 +68,13 @@ export default function ForgotPasswordPage() {
         <CardContent>
           {error && (
             <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
+              <Icons.alertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           {successMessage && (
             <Alert variant="default" className="mb-4 bg-green-50 border-green-300 text-green-700">
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <Icons.checkCircle className="h-4 w-4 text-green-600" />
               <AlertDescription>{successMessage}</AlertDescription>
             </Alert>
           )}
@@ -100,7 +100,7 @@ export default function ForgotPasswordPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
                     送信中...
                   </>
                 ) : (

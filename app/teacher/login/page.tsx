@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card" // Cardコンポーネントをインポート
 import { Alert, AlertDescription } from "@/components/ui/alert" // Alertコンポーネントをインポート
 import { useAuth } from "@/contexts/auth-context" // useAuthをインポート
-import { BookOpen, Loader2, AlertCircle } from "lucide-react" // Lucide Reactアイコンをインポート
+import { Icons } from "@/components/icons" // Lucide Reactアイコンをインポート
 import { useSession } from "next-auth/react" // useSessionをインポート
 
 export default function TeacherLoginPage() {
@@ -73,7 +73,7 @@ export default function TeacherLoginPage() {
     // 認証情報取得中または既にログイン済みで役割確定ならローダー表示
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+        <Icons.spinner className="w-8 h-8 animate-spin text-green-500" />
       </div>
     )
   }
@@ -83,7 +83,7 @@ export default function TeacherLoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-white" />
+            <Icons.bookOpen className="w-6 h-6 text-white" />
           </div>
           <CardTitle className="text-2xl">先生ログイン</CardTitle>
           <CardDescription>学生のモチベーション管理システム</CardDescription>
@@ -91,7 +91,7 @@ export default function TeacherLoginPage() {
         <CardContent>
           {error && (
             <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
+              <Icons.alertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -138,7 +138,7 @@ export default function TeacherLoginPage() {
             <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
                   ログイン中...
                 </>
               ) : (
