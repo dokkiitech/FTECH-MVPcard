@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchWithAuth } from "@/lib/api-client"
+import { StudentDetailModal } from "@/components/student-detail-modal"
 import { BarChart3, Users, Gift, Star, Plus, Copy, Loader2, Upload, Trash2, RefreshCw, Trophy } from "lucide-react"
 import { auth } from "@/lib/firebase"
 
@@ -62,6 +63,8 @@ export default function TeacherDashboard() {
   const [newStampImage, setNewStampImage] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+  const [isStudentDetailOpen, setIsStudentDetailOpen] = useState(false)
   const { user, userRole, logout, loading: authLoading } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -312,6 +315,17 @@ export default function TeacherDashboard() {
       description: "クリップボードにコピーしました",
       variant: "default",
     })
+  }
+
+  const handleStudentDetailClick = (studentId: string) => {
+    console.log("Opening student detail for ID:", studentId)
+    setSelectedStudentId(studentId)
+    setIsStudentDetailOpen(true)
+  }
+
+  const handleStudentDetailClose = () => {
+    setIsStudentDetailOpen(false)
+    setSelectedStudentId(null)
   }
 
   // 認証チェック中の表示
@@ -707,17 +721,7 @@ export default function TeacherDashboard() {
                               {student.exchanged_cards}
                             </div>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              toast({
-                                title: "学生詳細",
-                                description: `${student.name}さんの詳細情報を表示します（実装予定）`,
-                                variant: "default",
-                              })
-                            }}
-                          >
+                          <Button size="sm" variant="outline" onClick={() => handleStudentDetailClick(student.id)}>
                             詳細
                           </Button>
                         </div>
@@ -729,6 +733,13 @@ export default function TeacherDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* 学生詳細モーダル */}
+        <StudentDetailModal
+          studentId={selectedStudentId}
+          isOpen={isStudentDetailOpen}
+          onClose={handleStudentDetailClose}
+        />
       </main>
     </div>
   )
