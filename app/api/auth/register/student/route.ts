@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     if (!uid || !email || !name || !major) {
       console.error("Missing required fields:", { uid: !!uid, email: !!email, name: !!name, major: !!major })
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json({ error: "必須フィールドが不足しています" }, { status: 400 })
     }
 
     // 認証トークンの検証
@@ -24,11 +24,11 @@ export async function POST(request: NextRequest) {
 
       if (decodedToken.uid !== uid) {
         console.error("Token UID mismatch:", { tokenUid: decodedToken.uid, bodyUid: uid })
-        return NextResponse.json({ error: "Token UID mismatch" }, { status: 403 })
+        return NextResponse.json({ error: "認証トークンが一致しません" }, { status: 403 })
       }
     } catch (authError) {
       console.error("Auth token verification failed:", authError)
-      return NextResponse.json({ error: "Invalid authentication token" }, { status: 401 })
+      return NextResponse.json({ error: "認証トークンが無効です" }, { status: 401 })
     }
 
     // データベース接続を取得
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       console.error("Database connection failed:", dbConnError)
       return NextResponse.json(
         {
-          error: "Database connection failed",
+          error: "データベース接続に失敗しました",
           details: dbConnError.message,
         },
         { status: 500 },
@@ -51,43 +51,61 @@ export async function POST(request: NextRequest) {
     try {
       // ユーザーが既に存在するかチェック
       console.log("Checking if user already exists...")
-      const [existingUsers] = await connection.execute("SELECT id FROM users WHERE id = ? OR email = ?", [uid, email])
-
-      if ((existingUsers as any[]).length > 0) {
-        console.log("User already exists")
-        return NextResponse.json({ error: "User already exists" }, { status: 409 })
+      try {
+        const [existingUsers] = await connection.execute("SELECT id FROM users WHERE id = ? OR email = ?", [uid, email])
+        if ((existingUsers as any[]).length > 0) {
+          console.log("User already exists")
+          return NextResponse.json({ error: "このユーザーまたはメールアドレスは既に登録されています" }, { status: 409 })
+        }
+      } catch (checkError) {
+        console.error("Error checking existing user:", checkError)
+        // テーブルが存在しない場合は続行（初期化処理で作成される）
       }
 
-      // ユーザーをデータベースに保存
-      console.log("Inserting user into database...")
-      await connection.execute("INSERT INTO users (id, role, name, major, email) VALUES (?, ?, ?, ?, ?)", [
-        uid,
-        "student",
-        name,
-        major,
-        email,
-      ])
-      console.log("User inserted successfully")
+      // トランザクション開始
+      await connection.beginTransaction()
 
-      // 初期スタンプカードを3枚作成
-      console.log("Creating initial stamp cards...")
-      for (let i = 0; i < 3; i++) {
-        await connection.execute("INSERT INTO stamp_cards (student_id) VALUES (?)", [uid])
+      try {
+        // ユーザーをデータベースに保存
+        console.log("Inserting user into database...")
+        await connection.execute("INSERT INTO users (id, role, name, major, email) VALUES (?, ?, ?, ?, ?)", [
+          uid,
+          "student",
+          name,
+          major,
+          email,
+        ])
+        console.log("User inserted successfully")
+
+        // 初期スタンプカードを3枚作成
+        console.log("Creating initial stamp cards...")
+        for (let i = 0; i < 3; i++) {
+          await connection.execute("INSERT INTO stamp_cards (student_id) VALUES (?)", [uid])
+        }
+        console.log("Initial stamp cards created")
+
+        // トランザクションをコミット
+        await connection.commit()
+        console.log("Transaction committed successfully")
+
+        return NextResponse.json({ success: true, message: "学生登録が完了しました" })
+      } catch (transactionError) {
+        // トランザクションをロールバック
+        await connection.rollback()
+        console.error("Transaction error:", transactionError)
+        throw transactionError
       }
-      console.log("Initial stamp cards created")
-
-      return NextResponse.json({ success: true })
     } catch (dbError: any) {
       console.error("Database operation error:", dbError)
 
       // 重複エラーの場合
       if (dbError.code === "ER_DUP_ENTRY") {
-        return NextResponse.json({ error: "User already exists" }, { status: 409 })
+        return NextResponse.json({ error: "このユーザーまたはメールアドレスは既に登録されています" }, { status: 409 })
       }
 
       return NextResponse.json(
         {
-          error: "Database operation failed",
+          error: "データベース操作に失敗しました",
           details: dbError.message,
         },
         { status: 500 },
@@ -102,7 +120,7 @@ export async function POST(request: NextRequest) {
     console.error("Registration error:", error)
     return NextResponse.json(
       {
-        error: "Registration failed",
+        error: "登録に失敗しました",
         details: error.message,
       },
       { status: 500 },
