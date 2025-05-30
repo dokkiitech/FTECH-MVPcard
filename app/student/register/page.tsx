@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { signUp } from "@/lib/firebase/auth"
+import { useAuth } from "@/contexts/auth-context"
 
 const StudentRegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -20,6 +20,8 @@ const StudentRegisterPage = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
+
+  const { signUp } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
