@@ -31,10 +31,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid authentication token" }, { status: 401 })
     }
 
-    const connection = await pool.getConnection()
-    console.log("Database connection established")
+    // データベース接続を取得
+    let connection
+    try {
+      console.log("Getting database connection...")
+      connection = await pool.getConnection()
+      console.log("Database connection established")
+    } catch (dbConnError) {
+      console.error("Database connection failed:", dbConnError)
+      return NextResponse.json(
+        {
+          error: "Database connection failed",
+          details: dbConnError.message,
+        },
+        { status: 500 },
+      )
+    }
 
     try {
+      // ユーザーが既に存在するかチェック
+      console.log("Checking if user already exists...")
+      const [existingUsers] = await connection.execute("SELECT id FROM users WHERE id = ? OR email = ?", [uid, email])
+
+      if ((existingUsers as any[]).length > 0) {
+        console.log("User already exists")
+        return NextResponse.json({ error: "User already exists" }, { status: 409 })
+      }
+
       // ユーザーをデータベースに保存
       console.log("Inserting user into database...")
       await connection.execute("INSERT INTO users (id, role, name, major, email) VALUES (?, ?, ?, ?, ?)", [
@@ -54,15 +77,35 @@ export async function POST(request: NextRequest) {
       console.log("Initial stamp cards created")
 
       return NextResponse.json({ success: true })
-    } catch (dbError) {
-      console.error("Database error:", dbError)
-      return NextResponse.json({ error: `Database error: ${dbError.message}` }, { status: 500 })
+    } catch (dbError: any) {
+      console.error("Database operation error:", dbError)
+
+      // 重複エラーの場合
+      if (dbError.code === "ER_DUP_ENTRY") {
+        return NextResponse.json({ error: "User already exists" }, { status: 409 })
+      }
+
+      return NextResponse.json(
+        {
+          error: "Database operation failed",
+          details: dbError.message,
+        },
+        { status: 500 },
+      )
     } finally {
-      connection.release()
-      console.log("Database connection released")
+      if (connection) {
+        connection.release()
+        console.log("Database connection released")
+      }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Registration error:", error)
-    return NextResponse.json({ error: `Registration failed: ${error.message}` }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Registration failed",
+        details: error.message,
+      },
+      { status: 500 },
+    )
   }
 }
